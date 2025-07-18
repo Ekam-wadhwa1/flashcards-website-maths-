@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Flashcards</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        .flashcard-container {
+            perspective: 1000px;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .flashcard {
+            width: 100%;
+            height: 350px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+            cursor: pointer;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .flashcard.flipped {
+            transform: rotateY(180deg);
+        }
+        .flashcard-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 15px;
+            padding: 30px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        .flashcard-front {
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            color: white;
+        }
+        .flashcard-back {
+            background: linear-gradient(135deg, #ff8a00, #e52e71);
+            color: white;
+            transform: rotateY(180deg);
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .progress {
+            text-align: center;
+            margin-top: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+        .question-icon {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4" style="background: linear-gradient(135deg, #6e8efb, #a777e3);">
+    <div class="text-center mb-8" id="difficulty-screen">
+        
+        <h2 class="text-3xl font-bold text-gray-800 mb-1 animate-[pulse_2s_ease-in-out_infinite]">Flashcards</h2>
+        <p class="text-gray-600 mb-2">by Ekam Wadhwa</p>
+        <div class="mb-4">
+            <h2 class="text-xl font-medium mb-4">Number of Questions</h2>
+            <input type="number" id="question-count" min="1" max="100" value="5" 
+                   class="w-full max-w-xs p-2 border border-gray-300 rounded mb-6">
+        </div>
+        <h2 class="text-xl font-medium mb-4">Choose Difficulty</h2>
+        <div class="flex gap-4 justify-center">
+            <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg" 
+                    onclick="startGameWithCount('easy')">
+                Easy ✨
+            </button>
+            <button class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-3 px-6 rounded-lg text-lg"
+                    onclick="startGameWithCount('medium')">
+                Medium 💪
+            </button>
+            <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg text-lg"
+                    onclick="startGameWithCount('hard')">
+                Hard 🔥
+            </button>
+        </div>
+    </div>
+    <div id="results-screen" class="hidden text-center mt-8 p-6 bg-white/90 rounded-lg shadow-lg max-w-md mx-auto backdrop-blur-sm">
+        <h2 class="text-2xl font-bold mb-4">Results</h2>
+        <div id="score-display" class="text-xl mb-6"></div>
+        <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded mb-4"
+                onclick="location.reload()">
+            Play Again
+        </button>
+        <button class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded"
+                onclick="resetToFirstScreen()">
+            Main Menu
+        </button>
+    </div>
+    <div class="hidden" id="game-screen">
+
+    <div class="flashcard-container mb-8">
+        <div class="flashcard" id="flashcard" onclick="flipCard()">
+            <div class="flashcard-face flashcard-front">
+                <div>
+                    <h2 class="text-2xl font-bold mb-6" id="question"></h2>
+                    <p>Click to reveal answer</p>
+                </div>
+            </div>
+            <div class="flashcard-face flashcard-back">
+                <div>
+                    <h2 class="text-2xl font-bold mb-6" id="answer"></h2>
+                    <div class="flex gap-4 mb-4">
+                        <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded" onclick="event.stopPropagation(); markAnswer(true)">
+                            Correct ✓
+                        </button>
+                        <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded" onclick="markAnswer(false)">
+                            Incorrect ✗
+                        </button>
+                    </div>
+                    <p>Click anywhere to return to question</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="progress" id="progress"></div>
+
+    <div class="controls">
+        <button class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded" onclick="prevCard()">
+            Previous
+        </button>
+        <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" onclick="flipCard()">
+            Flip Card
+        </button>
+        <button class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded" onclick="nextCard()">
+            Next
+        </button>
+    </div>
+
+    <script>
+        function generateEasyQuestion() {
+            const num1 = Math.floor(Math.random() * 20) + 1;
+            const num2 = Math.floor(Math.random() * 20) + 1;
+            const ops = ['+', '-'];
+            const op = ops[Math.floor(Math.random() * ops.length)];
+            
+            let question, answer;
+            if (op === '+') {
+                question = `${num1} + ${num2}`;
+                answer = num1 + num2;
+            } else {
+                question = `${num1} - ${num2}`;
+                answer = num1 - num2;
+            }
+            
+            return {
+                question: `What is ${question}?`,
+                answer: answer.toString(),
+                correct: null
+            };
+        }
+
+        function generateMediumQuestion() {
+            const num1 = Math.floor(Math.random() * 12) + 1;
+            const num2 = Math.floor(Math.random() * 12) + 1;
+            const ops = ['×', '÷'];
+            const op = ops[Math.floor(Math.random() * ops.length)];
+            
+            let question, answer;
+            if (op === '×') {
+                question = `${num1} × ${num2}`;
+                answer = num1 * num2;
+            } else {
+                question = `${num1 * num2} ÷ ${num1}`;
+                answer = num2;
+            }
+            
+            return {
+                question: `What is ${question}?`,
+                answer: answer.toString(),
+                correct: null
+            };
+        }
+
+        function generateHardQuestion() {
+            const types = ['algebra', 'geometry'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            
+            if (type === 'algebra') {
+                const a = Math.floor(Math.random() * 5) + 1;
+                const b = Math.floor(Math.random() * 10) + 1;
+                const x = Math.floor(Math.random() * 5) + 1;
+                const c = a * x + b;
+                return {
+                    question: `Solve for x: ${a}x + ${b} = ${c}`,
+                    answer: x.toString(),
+                    correct: null
+                };
+            } else {
+                const side = Math.floor(Math.random() * 10) + 1;
+                return {
+                    question: `Area of square with side ${side}`,
+                    answer: (side * side).toString(),
+                    correct: null 
+                };
+            }
+        }
+
+        function getNextQuestion() {
+            if(difficulty === 'easy') return generateEasyQuestion();
+            else if(difficulty === 'medium') return generateMediumQuestion(); 
+            else return generateHardQuestion();
+        }
+        let flashcards = [];
+        let difficulty = '';
+
+        let currentCard = 0;
+        const cardElement = document.getElementById('flashcard');
+        const questionElement = document.getElementById('question');
+        const answerElement = document.getElementById('answer');
+        const progressElement = document.getElementById('progress');
+
+        function updateCard() {
+            questionElement.textContent = flashcards[currentCard].question;
+            answerElement.textContent = flashcards[currentCard].answer;
+            const totalQuestions = parseInt(document.getElementById('question-count').value) || 5;
+            progressElement.textContent = `Card ${currentCard + 1} of ${totalQuestions}`;
+            if (cardElement.classList.contains('flipped')) {
+                cardElement.classList.remove('flipped');
+            }
+        }
+
+        function flipCard() {
+            cardElement.classList.toggle('flipped');
+        }
+
+        function prevCard() {
+            if (currentCard > 0) {
+                currentCard--;
+                updateCard();
+            }
+        }
+
+        function markAnswer(isCorrect) {
+            flashcards[currentCard].correct = isCorrect;
+            flipCard();
+        }
+
+        function startGameWithCount(selectedDifficulty) {
+            difficulty = selectedDifficulty;
+            const totalQuestions = parseInt(document.getElementById('question-count').value) || 5;
+            flashcards = [];
+            
+            // Create exactly the number of requested questions
+            for (let i = 0; i < totalQuestions; i++) {
+                flashcards.push(getNextQuestion());
+            }
+            
+            difficulty = selectedDifficulty;
+            document.getElementById('difficulty-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            currentCard = 0;
+            updateCard();
+            // Update progress text to show actual card count
+            progressElement.textContent = `Card 1 of ${flashcards.length}`;
+        }
+
+        function showResults() {
+            const correctCount = flashcards.filter(card => card.correct === true).length;
+            const totalCards = flashcards.length;
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('results-screen').classList.remove('hidden');
+            document.getElementById('score-display').innerHTML = `
+                You got <span class="font-bold">${correctCount}/${totalCards}</span> correct!<br>
+                Difficulty: <span class="font-bold">${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}</span>
+            `;
+        }
+
+        function nextCard() {
+            const totalQuestions = parseInt(document.getElementById('question-count').value) || 5;
+            if (currentCard < totalQuestions - 1) {
+                currentCard++;
+                updateCard();
+            } else {
+                showResults();
+            }
+        }
+
+        function resetToFirstScreen() {
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('results-screen').classList.add('hidden');
+            document.getElementById('difficulty-screen').classList.remove('hidden');
+        }
+
+        // Don't call updateCard() here as it will error before game starts
+    </script>
+</body>
+</html>
+
